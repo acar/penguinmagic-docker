@@ -1,0 +1,14 @@
+{
+    "require": {
+        "swiftmailer/swiftmailer": "v5.2.0",
+        "predis/predis": "0.8.*@dev",
+        "doctrine/orm": "*",
+        "twilio/sdk": "3.12.6",
+        "delboy1978uk/php-redis-queue": "^1.0"
+    },
+    "autoload": {
+        "psr-0": {"Entities": "orm/"}
+    }
+}
+
+

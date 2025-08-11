@@ -1,0 +1,90 @@
+services:
+  php-apache:
+    image: php:8.3-apache
+    container_name: php-apache
+    #platform: linux/amd64
+    build:
+        context: .
+        dockerfile: Dockerfile
+    entrypoint: sh -c "composer install && apache2-foreground"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+    ports:
+      - "8080:80"  # Map localhost:8080 to the container's port 80
+    volumes:
+      - ../penguinmagic:/home/pmagic # Mount your local folder to the container's web root
+    restart: always
+    depends_on:
+      - db
+      - redis
+
+
+  php-worker:
+    image: php:8.3-apache
+    container_name: php-worker
+    #platform: linux/amd64
+    build:
+        context: .
+        dockerfile: Dockerfile
+    entrypoint: sh -c "composer install && php queue/worker.php"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+    volumes:
+      - ../penguinmagic:/home/pmagic # Mount your local folder to the container's web root
+    restart: always
+    depends_on:
+      - redis
+      - gearman-server
+
+
+  db:
+    image: mysql:8.0
+    container_name: mysql_local
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    container_name: redis
+    volumes:
+      - redis-data:/data  # 👈 This is where Redis stores its DB
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    # Optional: expose the port if needed
+    ports:
+      - "6379:6379"
+
+  redis-session:
+    image: redis:7
+    container_name: redis-session
+    volumes:
+      - redis-session-data:/data
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    ports:
+      - "6380:6379"
+
+  gearman-server:
+    image: artefactual/gearmand
+    container_name: gearman-server
+    ports:
+      - "4730:4730"
+    command: ["gearmand", "--listen=0.0.0.0", "--port=4730", "--verbose=INFO"]
+
+
+
+volumes:
+  db_data:
+  redis-data:
+  redis-session-data:
+
